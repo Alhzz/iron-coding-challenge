@@ -34,6 +34,7 @@ The application uses the standard mapping found on classic mobile phones:
 | **9** | `W` `X` `Y` `Z` |
 | **0** | `[Space]` |
 | **\*** | `[del]` |
+| **#** | `[send]` |
 
 ## 🛠️ Installation & Usage
 

@@ -33,7 +33,7 @@ The application uses the standard mapping found on classic mobile phones:
 | **8** | `T` `U` `V` |
 | **9** | `W` `X` `Y` `Z` |
 | **0** | `[Space]` |
-| ***** | `[Backspace]` |
+| **\*** | `[del]` |
 
 ## 🛠️ Installation & Usage
 

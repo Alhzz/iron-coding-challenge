@@ -1,52 +1,46 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO; // Required for File operations
 using System.Linq;
-using System.Runtime.InteropServices;
 
 class Program
 {
-    // Mapping of keypad buttons to characters.
-    // Index 0 represents Key '1', Index 1 represents Key '2', etc.
-    static string[] button_data = new string[12]
+    // Keypad mapping: Index 0 maps to Key '1', Index 1 to Key '2', etc.
+    // Note: Key 1 has symbols, Keys 7 & 9 have 4 letters, others have 3.
+    static readonly string[] button_data = new string[]
     {
-        "&'(", "abc", "def", "ghi",
-        "jkl", "mno", "pqrs", "tuv",
-        "wxyz", "-", " ", ""
+        "&'(", "ABC", "DEF", "GHI",
+        "JKL", "MNO", "PQRS", "TUV",
+        "WXYZ", "-", " ", ""
     };
 
     /// <summary>
-    /// Iteratively counts consecutive identical characters starting from a specific index.
-    /// This replaces the recursive version to prevent StackOverflow on long inputs.
+    /// Counts how many times a button was pressed consecutively.
+    /// Used to determine which character on the key was selected (e.g., 2 vs 22 vs 222).
     /// </summary>
     static int CountChar(string text, int startIndex)
     {
         int count = 0;
         char targetChar = text[startIndex];
 
-        // Loop forward starting from the current index
+        // Scan forward until a different character is found or string ends
         for (int i = startIndex; i < text.Length; i++)
         {
             if (text[i] == targetChar)
-            {
                 count++;
-            }
             else
-            {
-                // Stop as soon as we hit a different character
                 break;
-            }
         }
 
         return count;
     }
 
     /// <summary>
-    /// Translates a raw numeric string (e.g., "222") into human-readable text (e.g., "C").
-    /// Handles spaces ('0') and backspaces ('*').
+    /// Decodes a sequence of button presses into characters and updates the message list.
+    /// Handles cycling characters (22->B), spaces (0), and backspaces (*).
     /// </summary>
-    static List<char> Interpret(string text)
+    static List<char> Interpret(string text, List<char> characterList)
     {
-        List<char> characterList = new List<char>();
         int counter = 0;
 
         while (counter < text.Length)
@@ -55,7 +49,7 @@ class Program
 
             if (char.IsDigit(currentKey))
             {
-                // '0' acts as a space bar in this layout
+                // '0' is the specific key for a space character
                 if (currentKey == '0')
                 {
                     characterList.Add(' ');
@@ -63,25 +57,20 @@ class Program
                     continue;
                 }
 
-                // Keys 7 and 9 have 4 letters; others have 3
+                // Determine cycle length (Keys 7 & 9 wrap every 4 presses, others every 3)
                 int maxCycleLength = (currentKey == '7' || currentKey == '9') ? 4 : 3;
-
-                // Determine how many times this specific button was pressed in a row
                 int consecutivePresses = CountChar(text, counter);
                 
-                // Calculate which letter to pick: (PressCount - 1) % CycleLength
+                // Calculate character index: (Presses - 1) % CycleLength
                 int charIndex = (consecutivePresses - 1) % maxCycleLength;
-
-                // Map the ASCII digit (e.g. '1') to our array index (0)
                 int buttonDataIndex = currentKey - '1'; 
                 
-                char letter = button_data[buttonDataIndex][charIndex];
-                characterList.Add(letter);
+                characterList.Add(button_data[buttonDataIndex][charIndex]);
 
-                // Skip ahead past the sequence we just processed
+                // Move past the processed sequence of identical keys
                 counter += consecutivePresses;
             }
-            // Handle Backspace ('*')
+            // '*' acts as a backspace, removing the last entered character
             else if (currentKey == '*' && characterList.Count > 0)
             {
                 characterList.RemoveAt(characterList.Count - 1);
@@ -89,28 +78,52 @@ class Program
             }
             else
             {
-                // Skip unknown characters
+                // Ignore invalid characters (like #)
                 counter++;
             }
         }
         return characterList;
     }
 
+    /// <summary>
+    /// Main entry point for decoding a raw input string.
+    /// Splits input by spaces to simulate "pauses" between characters.
+    /// </summary>
+    static string OldPhonePad(string rawInput)
+    {
+        // A space in the input represents a pause, allowing the user to type
+        // the same letter twice (e.g. "2 2" -> "AA")
+        string[] inputSequences = rawInput.Split(' ');
+        List<char> characterList = new List<char>();
+        
+        foreach (string seq in inputSequences)
+        {
+            characterList = Interpret(seq, characterList);
+        }
+
+        return new string(characterList.ToArray());
+    }
+
     static void Main()
     {
-        // Example input with '#' which will be skipped
-        Console.WriteLine("Enter your text:");
-        string rawInput = Console.ReadLine();
+        string filePath = "test-case.txt"; 
 
-        // Split by space to distinguish between pauses
-        string[] inputSequences = rawInput.Split(' ');
-        
-        // Flatten the results into a single list
-        List<char> resultChars = inputSequences
-                                    .SelectMany(seq => Interpret(seq))
-                                    .ToList();
-
-        string finalMessage = new string(resultChars.ToArray());
-        Console.WriteLine(finalMessage);
+        try
+        {
+            // Process the input file line by line
+            string[] lines = File.ReadAllLines(filePath);
+            foreach (string line in lines)
+            {
+                Console.WriteLine(OldPhonePad(line));
+            }
+        }
+        catch (FileNotFoundException)
+        {
+            Console.WriteLine($"Error: The file '{filePath}' was not found.");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"An error occurred: {e.Message}");
+        }
     }
 }

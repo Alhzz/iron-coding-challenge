@@ -53,3 +53,13 @@ Create a file named `test-case.txt` and add your numeric strings, one per line.
 8 88777444666*664#
 222 2 22#
 7777*7777*77777#
+```
+
+**Outputs:**
+
+```text
+HELLO
+TURING
+CAB
+P
+```

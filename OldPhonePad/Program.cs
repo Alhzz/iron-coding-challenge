@@ -1,25 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
-using System.Net;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters;
-using System.Security.AccessControl;
-using System.Text;
-using System.Text.Encodings.Web;
-using Microsoft.VisualBasic; // Required for the ToList() extension method
 
 class Program
 {
+    // Mapping of keypad buttons to characters.
+    // Index 0 represents Key '1', Index 1 represents Key '2', etc.
     static string[] button_data = new string[12]
     {
         "&'(", "abc", "def", "ghi",
@@ -27,71 +14,102 @@ class Program
         "wxyz", "-", " ", ""
     };
 
-    static int CountChar(string text, int index)
+    /// <summary>
+    /// Iteratively counts consecutive identical characters starting from a specific index.
+    /// This replaces the recursive version to prevent StackOverflow on long inputs.
+    /// </summary>
+    static int CountChar(string text, int startIndex)
     {
-        int count;
+        int count = 0;
+        char targetChar = text[startIndex];
 
-        if (index == text.Length - 1) return 1;
-        if (text[index] != text[index + 1]) return 1;
-        if (index == text.Length - 2) return 2;
+        // Loop forward starting from the current index
+        for (int i = startIndex; i < text.Length; i++)
+        {
+            if (text[i] == targetChar)
+            {
+                count++;
+            }
+            else
+            {
+                // Stop as soon as we hit a different character
+                break;
+            }
+        }
 
-        count = CountChar(text, index + 1) + 1;
         return count;
     }
 
-
+    /// <summary>
+    /// Translates a raw numeric string (e.g., "222") into human-readable text (e.g., "C").
+    /// Handles spaces ('0') and backspaces ('*').
+    /// </summary>
     static List<char> Interpret(string text)
     {
-        List<char> charectorList = new List<char>();
-
+        List<char> characterList = new List<char>();
         int counter = 0;
-        int textLenght = text.Length;
 
-        while (counter < textLenght)
+        while (counter < text.Length)
         {
-            char buttonIndex = text[counter];
-            if (char.IsDigit(buttonIndex))
+            char currentKey = text[counter];
+
+            if (char.IsDigit(currentKey))
             {
-                int buttonIntIndex = buttonIndex - '1';
-                int charactorLength = CountChar(text, counter);
-                int textIndex = (charactorLength - 1) % 3;
+                // '0' acts as a space bar in this layout
+                if (currentKey == '0')
+                {
+                    characterList.Add(' ');
+                    counter++;
+                    continue;
+                }
 
-                // Console.WriteLine($"text: {text}");
-                // Console.WriteLine($"buttonIntIndex: {buttonIntIndex}");
-                // Console.WriteLine($"textIndex: {textIndex}");
-                // Console.WriteLine($"");
+                // Keys 7 and 9 have 4 letters; others have 3
+                int maxCycleLength = (currentKey == '7' || currentKey == '9') ? 4 : 3;
 
-                char letter = button_data[buttonIntIndex][textIndex];
-                charectorList.Add(letter);
+                // Determine how many times this specific button was pressed in a row
+                int consecutivePresses = CountChar(text, counter);
+                
+                // Calculate which letter to pick: (PressCount - 1) % CycleLength
+                int charIndex = (consecutivePresses - 1) % maxCycleLength;
 
-                counter += charactorLength;
+                // Map the ASCII digit (e.g. '1') to our array index (0)
+                int buttonDataIndex = currentKey - '1'; 
+                
+                char letter = button_data[buttonDataIndex][charIndex];
+                characterList.Add(letter);
+
+                // Skip ahead past the sequence we just processed
+                counter += consecutivePresses;
             }
-            else if (buttonIndex == '*' && charectorList.Count > 0)
+            // Handle Backspace ('*')
+            else if (currentKey == '*' && characterList.Count > 0)
             {
-                charectorList.RemoveAt(charectorList.Count - 1);
+                characterList.RemoveAt(characterList.Count - 1);
                 counter++;
             }
             else
             {
+                // Skip unknown characters
                 counter++;
             }
-
         }
-        return charectorList;
+        return characterList;
     }
-
 
     static void Main()
     {
-        List<char> charectorList = new List<char>();
-        string data = "8 88777444666*664#";
+        // Example input with '#' which will be skipped
+        string rawInput = "7777 7777 77777#";
 
-        string[] partsArray = data.Split(' ');
-        List<char> smallPartList = partsArray.SelectMany(x => Interpret(x)).ToList(); ;
-        charectorList.AddRange(smallPartList);
+        // Split by space to distinguish between pauses
+        string[] inputSequences = rawInput.Split(' ');
         
-        string finalMessage = new string(charectorList.ToArray());
-        Console.WriteLine(finalMessage);
+        // Flatten the results into a single list
+        List<char> resultChars = inputSequences
+                                    .SelectMany(seq => Interpret(seq))
+                                    .ToList();
 
+        string finalMessage = new string(resultChars.ToArray());
+        Console.WriteLine(finalMessage);
     }
 }

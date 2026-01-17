@@ -99,7 +99,8 @@ class Program
     static void Main()
     {
         // Example input with '#' which will be skipped
-        string rawInput = "7777 7777 77777#";
+        Console.WriteLine("Enter your text:");
+        string rawInput = Console.ReadLine();
 
         // Split by space to distinguish between pauses
         string[] inputSequences = rawInput.Split(' ');
